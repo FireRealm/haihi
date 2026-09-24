@@ -18,13 +18,13 @@ const GH_REPO  = process.env.GITHUB_REPO  || '';
 const GH_PATH  = process.env.GITHUB_PATH  || 'script.lua';
 const GH_REF   = process.env.GITHUB_REF   || 'main';
 
-// debug — shows key names present and shape of values, no secrets
+// debug at boot
 console.log('ENV KEYS SEEN:', Object.keys(process.env).filter(k => k.startsWith('GITHUB')).join(', ') || '(none)');
 console.log('GH_TOKEN:', GH_TOKEN ? `len=${GH_TOKEN.length} prefix=${GH_TOKEN.slice(0, 12)}` : 'EMPTY');
-console.log('GH_OWNER:', GH_OWNER || 'EMPTY');
-console.log('GH_REPO :', GH_REPO  || 'EMPTY');
-console.log('GH_PATH :', GH_PATH);
-console.log('GH_REF  :', GH_REF);
+console.log('GH_OWNER:', JSON.stringify(GH_OWNER));
+console.log('GH_REPO :', JSON.stringify(GH_REPO));
+console.log('GH_PATH :', JSON.stringify(GH_PATH));
+console.log('GH_REF  :', JSON.stringify(GH_REF));
 
 if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
   console.error('missing GITHUB_TOKEN / GITHUB_OWNER / GITHUB_REPO');
@@ -38,6 +38,14 @@ const CACHE_TTL_MS = 60_000;
 
 async function fetchLuaFromGitHub() {
   const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_REF}`;
+
+  // debug at fetch time — quoted strings reveal hidden spaces / newlines
+  console.log('FETCHING:', JSON.stringify(url));
+  console.log('OWNER raw:', JSON.stringify(GH_OWNER));
+  console.log('REPO  raw:', JSON.stringify(GH_REPO));
+  console.log('PATH  raw:', JSON.stringify(GH_PATH));
+  console.log('REF   raw:', JSON.stringify(GH_REF));
+
   const r = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${GH_TOKEN}`,
