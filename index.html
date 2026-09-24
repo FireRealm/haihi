@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>unauthorized access</title>
+<style>
+  :root{
+    --bg:#12121c;
+    --red:#ff5a3c;
+    --text:#f2f2f5;
+    --muted:#8a8aa3;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+
+  #copy-btn{
+    position:fixed;
+    top:16px;
+    left:16px;
+    background:transparent;
+    color:var(--muted);
+    border:1px solid #2a2a3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:13px;
+    font-family:inherit;
+    cursor:pointer;
+    transition:color .15s,border-color .15s;
+    z-index:10;
+  }
+  #copy-btn:hover{color:var(--text);border-color:#3d3d55}
+  #copy-btn.copied{color:var(--red);border-color:var(--red)}
+
+  .stage{
+    text-align:center;
+    max-width:680px;
+    padding:0 24px;
+    user-select:none;
+  }
+
+  .banner{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:.01em;
+    margin-bottom:22px;
+  }
+  .dot{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--red);
+    box-shadow:0 0 0 6px rgba(255,90,60,.12);
+  }
+
+  h1{
+    font-size:clamp(22px,3.4vw,34px);
+    font-weight:800;
+    letter-spacing:-.01em;
+    margin:0 0 14px;
+    line-height:1.25;
+  }
+
+  .sub{
+    color:var(--muted);
+    font-size:15px;
+    margin-bottom:40px;
+  }
+
+  .loader-label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    margin-bottom:10px;
+  }
+
+  .loadstring-box{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#1a1a28;
+    border:1px solid #26263a;
+    border-radius:10px;
+    padding:12px 14px;
+    font-family:"JetBrains Mono","Fira Code",Consolas,monospace;
+    font-size:13px;
+    color:#d7d7e6;
+    text-align:left;
+    overflow-x:auto;
+  }
+  .loadstring-box code{
+    white-space:pre;
+    flex:1;
+  }
+  .loadstring-box .kw{color:var(--red)}
+
+  .loader-hint{
+    margin-top:12px;
+    font-size:12px;
+    color:#5f5f7a;
+  }
+</style>
+</head>
+<body>
+
+  <button id="copy-btn" type="button">copy loader</button>
+
+  <main class="stage">
+    <div class="banner">
+      <span class="dot"></span>
+      <span>unauthorized acces</span>
+      <span class="dot"></span>
+    </div>
+
+    <h1>you are not allowed to get the source neegy</h1>
+    <p class="sub">close this page or i kil-</p>
+
+    <div class="loader-wrap">
+      <div class="loader-label">executor loader</div>
+      <div class="loadstring-box">
+        <code id="loader-code">local t = game:HttpGet("https://YOUR-APP.up.railway.app/mint")
+loadstring(game:HttpGet("https://YOUR-APP.up.railway.app/loader.lua?t=" .. t))()</code>
+      </div>
+      <div class="loader-hint">paste into any executor</div>
+    </div>
+  </main>
+
+<script>
+  const btn = document.getElementById('copy-btn');
+  const code = document.getElementById('loader-code');
+
+  btn.addEventListener('click', async () => {
+    const text = code.innerText.trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      flash();
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      flash();
+    }
+  });
+
+  function flash(){
+    btn.textContent = 'copied';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'copy loader';
+      btn.classList.remove('copied');
+    }, 1600);
+  }
+</script>
+</body>
+</html>
