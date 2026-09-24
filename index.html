@@ -24,7 +24,6 @@
     position:relative;
     overflow:hidden;
   }
-
   #copy-btn{
     position:fixed;
     top:16px;
@@ -42,77 +41,35 @@
   }
   #copy-btn:hover{color:var(--text);border-color:#3d3d55}
   #copy-btn.copied{color:var(--red);border-color:var(--red)}
-
-  .stage{
-    text-align:center;
-    max-width:680px;
-    padding:0 24px;
-    user-select:none;
-  }
-
+  .stage{text-align:center;max-width:680px;padding:0 24px;user-select:none}
   .banner{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:14px;
-    font-weight:700;
-    font-size:15px;
-    letter-spacing:.01em;
-    margin-bottom:22px;
+    display:flex;align-items:center;justify-content:center;gap:14px;
+    font-weight:700;font-size:15px;letter-spacing:.01em;margin-bottom:22px;
   }
   .dot{
     width:16px;height:16px;border-radius:50%;
     background:var(--red);
     box-shadow:0 0 0 6px rgba(255,90,60,.12);
   }
-
   h1{
-    font-size:clamp(22px,3.4vw,34px);
-    font-weight:800;
-    letter-spacing:-.01em;
-    margin:0 0 14px;
-    line-height:1.25;
+    font-size:clamp(22px,3.4vw,34px);font-weight:800;
+    letter-spacing:-.01em;margin:0 0 14px;line-height:1.25;
   }
-
-  .sub{
-    color:var(--muted);
-    font-size:15px;
-    margin-bottom:40px;
-  }
-
+  .sub{color:var(--muted);font-size:15px;margin-bottom:40px}
   .loader-label{
-    font-size:12px;
-    color:var(--muted);
-    text-transform:uppercase;
-    letter-spacing:.12em;
-    margin-bottom:10px;
+    font-size:12px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.12em;margin-bottom:10px;
   }
-
   .loadstring-box{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    background:#1a1a28;
-    border:1px solid #26263a;
-    border-radius:10px;
+    display:flex;align-items:center;gap:10px;
+    background:#1a1a28;border:1px solid #26263a;border-radius:10px;
     padding:12px 14px;
     font-family:"JetBrains Mono","Fira Code",Consolas,monospace;
-    font-size:13px;
-    color:#d7d7e6;
-    text-align:left;
-    overflow-x:auto;
+    font-size:13px;color:#d7d7e6;text-align:left;overflow-x:auto;
   }
-  .loadstring-box code{
-    white-space:pre;
-    flex:1;
-  }
+  .loadstring-box code{white-space:pre;flex:1}
   .loadstring-box .kw{color:var(--red)}
-
-  .loader-hint{
-    margin-top:12px;
-    font-size:12px;
-    color:#5f5f7a;
-  }
+  .loader-hint{margin-top:12px;font-size:12px;color:#5f5f7a}
 </style>
 </head>
 <body>
@@ -132,8 +89,8 @@
     <div class="loader-wrap">
       <div class="loader-label">executor loader</div>
       <div class="loadstring-box">
-        <code id="loader-code">local t = game:HttpGet("https://YOUR-APP.up.railway.app/mint")
-loadstring(game:HttpGet("https://YOUR-APP.up.railway.app/loader.lua?t=" .. t))()</code>
+        <code id="loader-code">local t = game:HttpGet("https://firehubduels.up.railway.app/mint")
+loadstring(game:HttpGet("https://firehubduels.up.railway.app/loader.lua?t=" .. t))()</code>
       </div>
       <div class="loader-hint">paste into any executor</div>
     </div>
@@ -151,9 +108,12 @@ loadstring(game:HttpGet("https://YOUR-APP.up.railway.app/loader.lua?t=" .. t))()
     } catch (e) {
       const ta = document.createElement('textarea');
       ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
       document.body.appendChild(ta);
+      ta.focus();
       ta.select();
-      document.execCommand('copy');
+      try { document.execCommand('copy'); } catch (_) {}
       document.body.removeChild(ta);
       flash();
     }
