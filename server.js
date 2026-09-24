@@ -1,5 +1,5 @@
 // language: Node.js, file: server.js, target: Railway / Node 20
-// env: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, GITHUB_PATH, GITHUB_REF, PORT
+// env: GITHUB_OWNER, GITHUB_REPO (required) — GITHUB_TOKEN, GITHUB_PATH, GITHUB_REF (optional)
 
 import express from 'express';
 import crypto from 'crypto';
@@ -12,22 +12,23 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ---- github config ----
+// token now optional — public repos fetch without auth
 const GH_TOKEN = process.env.GITHUB_TOKEN || '';
 const GH_OWNER = process.env.GITHUB_OWNER || '';
 const GH_REPO  = process.env.GITHUB_REPO  || '';
 const GH_PATH  = process.env.GITHUB_PATH  || 'script.lua';
 const GH_REF   = process.env.GITHUB_REF   || 'main';
 
-// debug at boot
+// boot log — quoted strings reveal hidden spaces/newlines
 console.log('ENV KEYS SEEN:', Object.keys(process.env).filter(k => k.startsWith('GITHUB')).join(', ') || '(none)');
-console.log('GH_TOKEN:', GH_TOKEN ? `len=${GH_TOKEN.length} prefix=${GH_TOKEN.slice(0, 12)}` : 'EMPTY');
+console.log('GH_TOKEN:', GH_TOKEN ? `len=${GH_TOKEN.length} prefix=${GH_TOKEN.slice(0, 12)}` : 'EMPTY (ok for public repo)');
 console.log('GH_OWNER:', JSON.stringify(GH_OWNER));
 console.log('GH_REPO :', JSON.stringify(GH_REPO));
 console.log('GH_PATH :', JSON.stringify(GH_PATH));
 console.log('GH_REF  :', JSON.stringify(GH_REF));
 
-if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
-  console.error('missing GITHUB_TOKEN / GITHUB_OWNER / GITHUB_REPO');
+if (!GH_OWNER || !GH_REPO) {
+  console.error('missing GITHUB_OWNER / GITHUB_REPO');
   process.exit(1);
 }
 
@@ -39,21 +40,17 @@ const CACHE_TTL_MS = 60_000;
 async function fetchLuaFromGitHub() {
   const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_REF}`;
 
-  // debug at fetch time — quoted strings reveal hidden spaces / newlines
   console.log('FETCHING:', JSON.stringify(url));
-  console.log('OWNER raw:', JSON.stringify(GH_OWNER));
-  console.log('REPO  raw:', JSON.stringify(GH_REPO));
-  console.log('PATH  raw:', JSON.stringify(GH_PATH));
-  console.log('REF   raw:', JSON.stringify(GH_REF));
 
-  const r = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${GH_TOKEN}`,
-      'Accept': 'application/vnd.github.raw',
-      'User-Agent': 'firehub-loader',
-      'X-GitHub-Api-Version': '2022-11-28'
-    }
-  });
+  const headers = {
+    'Accept': 'application/vnd.github.raw',
+    'User-Agent': 'firehub-loader',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  // only send auth if a token is actually set — empty bearer breaks public fetches
+  if (GH_TOKEN) headers['Authorization'] = `Bearer ${GH_TOKEN}`;
+
+  const r = await fetch(url, { headers });
   if (!r.ok) {
     const body = await r.text().catch(() => '');
     throw new Error(`github ${r.status}: ${body.slice(0, 200)}`);
