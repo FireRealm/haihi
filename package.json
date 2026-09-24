@@ -1,11 +1,14 @@
 {
-  "name": "script-delivery-server",
+  "name": "neegy-loader",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "main": "server.js",
+  "engines": { "node": ">=20" },
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": ">=20"
+  "dependencies": {
+    "express": "^4.19.2"
   }
 }
