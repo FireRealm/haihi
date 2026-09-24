@@ -3,6 +3,10 @@
 
 import express from 'express';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +18,14 @@ const GH_REPO  = process.env.GITHUB_REPO  || '';
 const GH_PATH  = process.env.GITHUB_PATH  || 'script.lua';
 const GH_REF   = process.env.GITHUB_REF   || 'main';
 
+// debug — shows key names present and shape of values, no secrets
+console.log('ENV KEYS SEEN:', Object.keys(process.env).filter(k => k.startsWith('GITHUB')).join(', ') || '(none)');
+console.log('GH_TOKEN:', GH_TOKEN ? `len=${GH_TOKEN.length} prefix=${GH_TOKEN.slice(0, 12)}` : 'EMPTY');
+console.log('GH_OWNER:', GH_OWNER || 'EMPTY');
+console.log('GH_REPO :', GH_REPO  || 'EMPTY');
+console.log('GH_PATH :', GH_PATH);
+console.log('GH_REF  :', GH_REF);
+
 if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
   console.error('missing GITHUB_TOKEN / GITHUB_OWNER / GITHUB_REPO');
   process.exit(1);
@@ -22,7 +34,7 @@ if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
 // ---- in-memory cache ----
 let CACHED_LUA = null;
 let CACHED_AT  = 0;
-const CACHE_TTL_MS = 60_000; // refresh at most once per minute
+const CACHE_TTL_MS = 60_000;
 
 async function fetchLuaFromGitHub() {
   const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_REF}`;
@@ -30,7 +42,7 @@ async function fetchLuaFromGitHub() {
     headers: {
       'Authorization': `Bearer ${GH_TOKEN}`,
       'Accept': 'application/vnd.github.raw',
-      'User-Agent': 'neegy-loader',
+      'User-Agent': 'firehub-loader',
       'X-GitHub-Api-Version': '2022-11-28'
     }
   });
@@ -78,18 +90,39 @@ function burnToken(t) {
   VALID_TOKENS.delete(t);
 }
 
-// ---- static page ----
-app.use(express.static('public'));
+// ---- executor UA check ----
+function isExecutor(ua) {
+  const u = (ua || '').toLowerCase();
+  return u.includes('roblox')
+      || u.includes('synapse')
+      || u.includes('krnl')
+      || u.includes('delta')
+      || u.includes('fluxus')
+      || u.includes('argon')
+      || u.includes('codex')
+      || u.includes('hydrogen')
+      || u.includes('wave')
+      || u.includes('solara')
+      || u.includes('xeno');
+}
 
-// ---- mint endpoint (executor only) ----
+// ---- static page ----
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ---- mint endpoint ----
 app.get('/mint', (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
            || req.socket.remoteAddress
            || 'unknown';
-  const ua = (req.headers['user-agent'] || '').toLowerCase();
 
   if (rateLimited(ip)) return res.status(429).type('text/plain').send('-- slow down');
-  if (!ua.includes('roblox')) return res.status(403).type('text/plain').send('-- forbidden');
+  if (!isExecutor(req.headers['user-agent'])) {
+    return res.status(403).type('text/plain').send('-- forbidden');
+  }
 
   res.type('text/plain').send(mintToken());
 });
@@ -99,16 +132,16 @@ app.get('/loader.lua', async (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
            || req.socket.remoteAddress
            || 'unknown';
-  const ua = (req.headers['user-agent'] || '').toLowerCase();
   const token = req.query.t;
 
   if (rateLimited(ip)) return res.status(429).type('text/plain').send('-- slow down');
-  if (!ua.includes('roblox')) return res.status(403).type('text/plain').send('-- forbidden');
+  if (!isExecutor(req.headers['user-agent'])) {
+    return res.status(403).type('text/plain').send('-- forbidden');
+  }
   if (!token || !VALID_TOKENS.has(token)) {
     return res.status(403).type('text/plain').send('-- forbidden');
   }
 
-  // burn — one shot
   burnToken(token);
 
   let lua;
@@ -127,10 +160,10 @@ app.get('/loader.lua', async (req, res) => {
   res.send(lua);
 });
 
-// ---- manual cache bust (optional, protect with a header) ----
+// ---- manual cache bust ----
 app.get('/reload', async (req, res) => {
   if (req.headers['x-reload-key'] !== process.env.RELOAD_KEY) {
-    return res.status(403).send('no');
+    return res.status(403).type('text/plain').send('no');
   }
   try {
     CACHED_LUA = await fetchLuaFromGitHub();
