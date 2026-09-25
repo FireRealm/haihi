@@ -1,14 +1,13 @@
 {
-  "name": "neegy-loader",
+  "name": "firehub-loader",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "server.js",
   "engines": { "node": ">=20" },
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
   }
 }
