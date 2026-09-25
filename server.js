@@ -2,6 +2,7 @@
 // env: DATABASE_URL (injected by Railway Postgres)
 
 import express from 'express';
+import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
@@ -27,7 +28,22 @@ function rateLimited(ip) {
   const rec = hits.get(ip) || { count: 0, reset: now + 60000 };
   if (now > rec.reset) { rec.count = 0; rec.reset = now + 60000; }
   rec.count++; hits.set(ip, rec);
-  return rec.count > 60;
+  return rec.count > 30;
+}
+
+const VALID_TOKENS = new Map();
+function mintToken(ip, ua) {
+  const t = crypto.randomBytes(24).toString('hex');
+  VALID_TOKENS.set(t, { ip, ua, exp: Date.now() + 300000 });
+  setTimeout(() => VALID_TOKENS.delete(t), 300000);
+  return t;
+}
+function consumeToken(t, ip, ua) {
+  const e = VALID_TOKENS.get(t);
+  if (!e) return false;
+  if (Date.now() > e.exp || e.ip !== ip || e.ua !== ua) { VALID_TOKENS.delete(t); return false; }
+  VALID_TOKENS.delete(t);
+  return true;
 }
 
 function isExecutor(ua) {
@@ -36,23 +52,47 @@ function isExecutor(ua) {
           'hydrogen','wave','solara','xeno','script-ware','swift'].some(k => u.includes(k));
 }
 
-// / — smart route: executor gets Lua, browser gets page
-app.get('/', async (req, res) => {
+// / — smart route: browser sees page, executor gets the plain URL info
+app.get('/', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  if (!isExecutor(ua)) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  // executors hitting / get told to use /loader.lua with a token
+  res.type('text/plain').send(
+    '-- use the mint flow\n' +
+    'local t=game:HttpGet("https://firehubduels.up.railway.app/mint")\n' +
+    'loadstring(game:HttpGet("https://firehubduels.up.railway.app/loader.lua?t="..t))()'
+  );
+});
+
+// static files (css, images) served normally
+app.use(express.static(path.join(__dirname, 'public')));
+
+// mint
+app.get('/mint', (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
            || req.socket.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
-
-  if (!isExecutor(ua)) {
-    // browser → styled page
-    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  }
-
   if (rateLimited(ip)) return res.status(429).type('text/plain').send('-- slow down');
+  if (!isExecutor(ua)) return res.status(403).type('text/plain').send('-- forbidden');
+  res.type('text/plain').send(mintToken(ip, ua));
+});
 
+// loader — requires valid minted token
+app.get('/loader.lua', async (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+           || req.socket.remoteAddress || 'unknown';
+  const ua = req.headers['user-agent'] || '';
+  const token = req.query.t;
+  if (rateLimited(ip)) return res.status(429).type('text/plain').send('-- slow down');
+  if (!isExecutor(ua)) return res.status(403).type('text/plain').send('-- forbidden');
+  if (!token || !consumeToken(token, ip, ua)) {
+    return res.status(403).type('text/plain').send('-- forbidden');
+  }
   let lua;
   try { lua = await getLua(); }
   catch (e) { console.error('db failed:', e.message); return res.status(502).type('text/plain').send('-- upstream error'); }
-
   res.set({
     'Content-Type': 'text/plain; charset=utf-8',
     'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -61,9 +101,6 @@ app.get('/', async (req, res) => {
   });
   res.send(lua);
 });
-
-// static files (css, images, favicon) served normally
-app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (_req, res) => res.type('text/plain').send('ok'));
 
