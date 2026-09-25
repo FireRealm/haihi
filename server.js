@@ -36,17 +36,18 @@ function isExecutor(ua) {
           'hydrogen','wave','solara','xeno','script-ware','swift'].some(k => u.includes(k));
 }
 
-// page still served at /page
-app.get('/page', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-// root now serves the script — this is what the loadstring hits
+// / — smart route: executor gets Lua, browser gets page
 app.get('/', async (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
            || req.socket.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
 
+  if (!isExecutor(ua)) {
+    // browser → styled page
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+
   if (rateLimited(ip)) return res.status(429).type('text/plain').send('-- slow down');
-  if (!isExecutor(ua)) return res.status(403).type('text/plain').send('-- forbidden');
 
   let lua;
   try { lua = await getLua(); }
@@ -60,6 +61,9 @@ app.get('/', async (req, res) => {
   });
   res.send(lua);
 });
+
+// static files (css, images, favicon) served normally
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (_req, res) => res.type('text/plain').send('ok'));
 
